@@ -1,0 +1,237 @@
+{
+  "name": "LeadForge AI — Error Monitoring",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b1ce14fb-eb85-413c-afc3-88d9c9cd58b2",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -624,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Extract Core Data\nconst err = items[0].json.execution;\nconst wf = items[0].json.workflow;\n\n// 2. Attempt to find the Lead's Email for context\nlet leadId = \"Unknown Prospect\";\ntry {\n  // Looks into the input data of the node that failed\n  leadId = err.error.context.item.json.email || err.error.context.item.json.contact_email || \"No Lead Info Found\";\n} catch (e) {}\n\n// 3. Rate Limiting Logic (Deduplication)\n// Prevents 100 alerts if a batch fails. Key = WorkflowName + NodeName\nconst errorKey = `err_${wf.id}_${err.lastNodeExecuted}`.replace(/\\s/g, '');\n\n// FIX: Added 'typeof' check to prevent \"is not defined\" error in Editor\nlet lastSent = 0;\nif (typeof $staticData !== 'undefined') {\n  lastSent = $staticData[errorKey] || 0;\n}\n\nconst now = Date.now();\nconst shouldNotify = (now - lastSent) > 900000; // 15 Minute Cooldown\n\nif (shouldNotify && typeof $staticData !== 'undefined') {\n  $staticData[errorKey] = now;\n}\n\nreturn {\n  workflow: wf.name,\n  node: err.lastNodeExecuted,\n  message: err.error.message,\n  url: err.url,\n  lead: leadId,\n  severity: [\"Send Email\", \"Sync Draft\"].includes(err.lastNodeExecuted) ? \"🔴 CRITICAL\" : \"⚠️ WARNING\",\n  should_notify: shouldNotify,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "c34a0311-1f60-4003-b628-f258e705efee",
+      "name": "Analyze & Rate Limit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        160
+      ],
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.should_notify }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "71f3a44d-cd9f-4ddb-8853-49afa6115307",
+      "name": "Should Notify?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Error_Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $json.timestamp }}",
+            "Workflow": "={{ $json.workflow }}",
+            "Lead": "={{ $json.lead }}",
+            "Error": "={{ $json.message }}",
+            "Node": "={{ $json.node }}",
+            "Severity": "={{ $json.severity }}",
+            "Execution Link": "={{ $json.url }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Workflow",
+              "displayName": "Workflow",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lead",
+              "displayName": "Lead",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Error",
+              "displayName": "Error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Node",
+              "displayName": "Node",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Severity",
+              "displayName": "Severity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Execution Link",
+              "displayName": "Execution Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        0,
+        0
+      ],
+      "id": "479c466b-0693-442b-bae1-69b45833d8b3",
+      "name": "permanent Audit log"
+      
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SLACK_CHANNEL_ID"
+        },
+        "text": "=🚨 *{{ $json.severity }} Failure in {{ $json.workflow }}* 📍 *Node:* {{ $json.node }} 👤 *Lead:* {{ $json.lead }} ❌ *Error:* {{ $json.message }} 🔗 [View Execution]({{ $json.url }})",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        16,
+        352
+      ],
+      "id": "f22ca132-0de3-4859-aa3c-dcc2180e2d98",
+      "name": "smart slack alert",
+      "webhookId": "0382f1a0-156b-498c-905d-1efe8b37ed63"
+      
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Analyze & Rate Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze & Rate Limit": {
+      "main": [
+        [
+          {
+            "node": "Should Notify?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "permanent Audit log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Notify?": {
+      "main": [
+        [
+          {
+            "node": "smart slack alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "18577c25-9e65-4565-9628-e0861e093f56",
+  "meta": {
+    "templateCredsSetupCompleted": true
+    
+  },
+  "id": "a6w5D8Ke_LUVtpSxQ7J1u",
+  "tags": []
+}

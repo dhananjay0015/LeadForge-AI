@@ -1,0 +1,753 @@
+{
+  "name": "[LeadForge] Automated Follow-ups",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -496,
+        1888
+      ],
+      "id": "59ea65c7-7c3a-4e26-9b71-b07a4e9c96ad",
+      "name": "Daily Follow-up Scheduler"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "lead_tracker",
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "=Cold_Lead"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "Nurture_Ongoing"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        1888
+      ],
+      "id": "e411f559-238d-4b8e-9e9e-55e505456a1e",
+      "name": "Fetch Leads from Supabase",
+      "alwaysOutputData": true
+      
+    },
+    {
+      "parameters": {
+        "resource": "thread",
+        "operation": "get",
+        "threadId": "={{ $json.thread_id }}",
+        "options": {
+          "returnOnlyMessages": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        1808
+      ],
+      "id": "035f03af-4e7b-4624-b1ec-f01bfe1a7a45",
+      "name": "Fetch Gmail Conversation Thread",
+      "webhookId": "74d251cf-3192-4ec6-a9af-5a0f99c77c6e"
+      
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        592,
+        2048
+      ],
+      "id": "e7edb4b7-eabe-4dd8-8767-1a0153c94de6",
+      "name": "Groq Chat Model4"
+      
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Act as a Senior Solutions Architect. Write a ultra-short, thread-style nudge for {{ $('Fetch Leads from Supabase').item.json.first_name.split(' ')[0]  }}.\n\nContext:\n- Company:{{ $('Fetch Leads from Supabase').item.json.company_name }} \n- Specific Pain Point:{{ $('Fetch Leads from Supabase').item.json.challenges }} \n\nInstructions:\nSentence 1: Start with \"Hi {{ $('Fetch Leads from Supabase').item.json.first_name.split(' ')[0]  }} ,\". Ask if they've had a second to think about the {{ $('').item.json.challenges }} automation we discussed for {{ $('Fetch Leads from Supabase').item.json.company_name }}.\n\nSentence 2: Mention that I was just looking at a similar setup we did recently where we saved the team ~15 hours a week by removing the manual work. \n\nSentence 3: Ask: \"Worth a 30-second look at the logic map, or should I circle back next month?\"\n\nSTRICT EXECUTION RULES:\n1. MAX 30 words.\n2. NO \"Checking in\", \"Touching base\", or \"Following up\". \n3. NO \"I'm writing to\". \n4. NO corporate jargon like \"synergy\", \"optimization\", or \"efficiency\".\n5. Use \"sentence case\" (no unnecessary caps).\n6. TONE: Peer-to-peer, professional, and slightly casual (like a mobile-typed email).\n7. NO sign-offs or signatures (The Gmail node handles this).",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        640,
+        1824
+      ],
+      "id": "4ac98337-881e-4164-88a6-348da92350bb",
+      "name": "Generate Warm Lead Follow-up",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $node[\"Fetch Gmail Conversation Thread\"].json[\"messages\"][0][\"id\"] }}",
+        "message": "=<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.5; color: #1a1a1a;\">\n  \n  <p style=\"margin: 0 0 15px 0;\">\n    {{ $json.output.replace(/\\n/g, '<br>') }}\n  </p>\n\n  <p style=\"margin-top: 25px; line-height: 1.2;\">\n    Best Regards,<br><br>\n    <strong>LeadForge AI</strong><br>\n    <span style=\"color: #666; font-size: 13px;\">Solutions Architect | LeadForge</span>\n  </p>\n\n</div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        944,
+        1936
+      ],
+      "id": "713e1c12-d063-48f9-b8dc-01a6030d9c51",
+      "name": "Send Warm Lead Follow-up",
+      "webhookId": "352d755e-5367-4764-b774-102e6ed6eed5"
+      
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "lead_tracker",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $node[\"Route by Lead Status\"].json[\"id\"] }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ $now.toFormat('yyyy-MM-dd HH:mm:ss') }}"
+            },
+            {
+              "fieldId": "nudge_count",
+              "fieldValue": "={{ $node[\"Route by Lead Status\"].json[\"nudge_count\"] + 1 }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        1744
+      ],
+      "id": "af0ef628-4f88-43a5-860f-af1fe022c45e",
+      "name": "Update Follow-up Count"
+      
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Act as a Senior Solutions Architect. Write a 2-sentence outreach for {{ $json.first_name.split(' ')[0] }}.\n\nContext:\n- Company: {{ $json.company_name }}\n- Friction: {{ $json.challenges }}\n\nInstructions:\nSentence 1: Directly address the operational bottleneck or time-leak caused by {{ $json.challenges.split(',')[0] }} at {{ $json.company_name }}. Focus on the efficiency loss.\n\nSentence 2: Ask if they are open to a 30-second look at a logic map of how we automated this exact workflow recently.\n\nSTRICT RULES:\n1. MAX 25 words.\n2. NO \"I'm writing to\", \"I noticed\", or corporate jargon.\n3. Start with the problem. No fluff.\n4. Use \"sentence case\" (no unnecessary caps).\n5. NO salutations or signatures.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        192,
+        1408
+      ],
+      "id": "fa3a7d34-6690-4b97-ad31-be46b630d3d1",
+      "name": "Generate Cold Lead Follow-up",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        192,
+        1600
+      ],
+      "id": "d5405ca2-8ae6-4e21-ad7f-956b5a332459",
+      "name": "Groq Chat Model5"
+      
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_EMAIL_HERE",
+        "subject": "=Quick idea regarding {{ $node[\"Fetch Leads from Supabase\"].json[\"company_name\"] }}\n\n",
+        "message": "=<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.4; color: #1a1a1a;\">\n  \n  <p>Hi {{ $('Fetch Leads from Supabase').item.json.first_name.split(' ')[0] }},</p>\n\n  <p style=\"margin: 15px 0;\">\n    {{ $node[\"Generate Cold Lead Follow-up\"].json[\"output\"] }}\n  </p>\n\n  <p style=\"margin-top: 25px; line-height: 1.2;\">\n    Best Regards,<br><br>\n    <strong>LeadForge AI</strong><br>\n    <span style=\"color: #666; font-size: 13px;\">Solutions Architect | LeadForge</span>\n  </p>\n\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        544,
+        1440
+      ],
+      "id": "e50247fe-31b9-42af-9aa6-04ee4377f2b9",
+      "name": "Send Cold Lead Email",
+      "webhookId": "5c68e2be-8618-4705-8d03-50fb2b883b18"
+      
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "lead_tracker",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $node[\"Route by Lead Status\"].json[\"id\"] }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ $now.toFormat('yyyy-MM-dd HH:mm:ss') }}"
+            },
+            {
+              "fieldId": "thread_id",
+              "fieldValue": "={{ $node[\"Send Cold Lead Email\"].json[\"threadId\"] }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "Nurture_Ongoing"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        848,
+        1440
+      ],
+      "id": "e9ddd506-d0e3-421b-a423-4815c2d06de0",
+      "name": "Update Cold Lead Record"
+      
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "02db70e7-6573-4dd7-90e6-431834643854",
+              "leftValue": "={{ $node[\"Fetch Leads from Supabase\"].json.updated_at }}",
+              "rightValue": "={{ new Date(new Date().setDate(new Date().getDate() - 3)).toISOString() }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "before"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -16,
+        1824
+      ],
+      "id": "e017389a-56af-41db-b1c4-eb368509032f",
+      "name": "Check Follow-up Eligibility"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $node[\"Fetch Leads from Supabase\"].json.status }}",
+                    "rightValue": "Cold_Lead",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "cc0058b0-9fc8-4a61-b58c-42960fd28ade"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cold lead"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "14ea71e6-3586-4044-8191-44a9ebe4954e",
+                    "leftValue": "={{ $node[\"Fetch Leads from Supabase\"].json.status }}",
+                    "rightValue": "Nurture_Ongoing",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "nurturing"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -96,
+        1584
+      ],
+      "id": "ebac74bd-7ba7-4503-b2c1-e84542fb67b1",
+      "name": "Route by Lead Status"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  // 1. Safe extraction of messages and root labels\n  const messages = item.json.messages || [];\n  const rootLabels = item.json.labels || [];\n  \n  // 2. Check if root labels array contains 'INBOX'\n  // (Handles both array of strings and array of objects)\n  const hasInboxInRoot = rootLabels.some(l => {\n    if (typeof l === 'string') return l === 'INBOX';\n    if (l && typeof l === 'object') return l.id === 'INBOX';\n    return false;\n  });\n  \n  // 3. Check the very last message in the thread (The most accurate way)\n  let lastMessageIsInbox = false;\n  if (messages.length > 0) {\n    const lastMsg = messages[messages.length - 1];\n    \n    // Gmail API can return labels as 'labelIds' (strings) or 'labels' (objects)\n    const currentLabels = lastMsg.labelIds || lastMsg.labels || [];\n    \n    lastMessageIsInbox = currentLabels.some(l => {\n      if (typeof l === 'string') return l === 'INBOX';\n      if (l && typeof l === 'object') return l.id === 'INBOX';\n      return false;\n    });\n  }\n\n  // 4. Final Result: If either check is true, lead has replied\n  item.json.is_replied = hasInboxInRoot || lastMessageIsInbox;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        2176
+      ],
+      "id": "d5e30fad-9d60-49eb-8419-0f51fc455bcc",
+      "name": "Detect Customer Reply"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.is_replied }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "id": "7d3b6f63-4c53-4d4c-a3fd-09b37e8986f9"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Replied"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "db201fd9-53ed-4020-82f3-27a936315075",
+                    "leftValue": "={{ !$json.is_replied && $node[\"Route by Lead Status\"].json[\"nudge_count\"] < 3 }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "No Reply"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "d4da12cd-12b7-4754-9ce8-b37a1ade0834",
+                    "leftValue": "={{ !$json.is_replied && $node[\"Route by Lead Status\"].json[\"nudge_count\"] >= 3 }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Max Nudges"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        368,
+        2128
+      ],
+      "id": "3c2bcbf1-b587-48e4-a516-c910e17f1cc8",
+      "name": "Route by Reply Status & Nudge Limit"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "lead_tracker",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $node[\"Route by Lead Status\"].json[\"id\"] }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ $now.toFormat('yyyy-MM-dd HH:mm:ss') }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "Warm_Engaged"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        672,
+        2144
+      ],
+      "id": "13b25fe7-80e5-42b0-a41d-6e761e435b1c",
+      "name": "Update Engaged Lead Status in Supabase"
+      
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "id"
+        },
+        "text": "=*🔔 LEADFORGE | AUTOMATED HANDOVER ALERT*\n__________________________________________________________\n\n🚀 *Status:* Hot Lead Detected (Automation Paused)\n\n📍 *LEAD DETAILS*\n• *Name:* {{ $('Fetch Leads from Supabase').item.json.first_name }}\n• *Email:* {{ $('Fetch Leads from Supabase').item.json.email }}\n• *Company:* {{ $('Fetch Leads from Supabase').item.json.company_name}}\n\n💬 *LATEST INTERACTION*\n> \"{{ $('Fetch Gmail Conversation Thread').item.json.messages[2].snippet }}\"\n\n⚙️ *SYSTEM ACTIONS COMPLETED*\n✅ Database Synchronized (Supabase)\n✅ Status Updated: `Warm_Engaged`\n✅ Campaign Sequence: Halted\n\n⚠️ *REQUIRED ACTION*\n@Sales Team, the lead is now awaiting a manual response. Please review the thread and take over.\n__________________________________________________________",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        880,
+        2144
+      ],
+      "id": "50c1a6ae-8f15-46a7-b32a-052de49db9f4",
+      "name": "Notify Sales Manager in Slack",
+      "webhookId": "9052b84f-1526-41a2-ad11-dd2e59fe7f0e"
+      
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "lead_tracker",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $node[\"Route by Lead Status\"].json[\"id\"] }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ $now.toFormat('yyyy-MM-dd HH:mm:ss') }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "Non_Responsive"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        656,
+        2304
+      ],
+      "id": "9cbf7227-572d-4df3-b075-f8485adae1a7",
+      "name": "Mark Lead as Non_Responsive"
+      
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Follow-up Scheduler": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads from Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads from Supabase": {
+      "main": [
+        [
+          {
+            "node": "Route by Lead Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Gmail Conversation Thread": {
+      "main": [
+        [
+          {
+            "node": "Detect Customer Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Warm Lead Follow-up",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Warm Lead Follow-up": {
+      "main": [
+        [
+          {
+            "node": "Send Warm Lead Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Warm Lead Follow-up": {
+      "main": [
+        [
+          {
+            "node": "Update Follow-up Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Cold Lead Follow-up",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Cold Lead Follow-up": {
+      "main": [
+        [
+          {
+            "node": "Send Cold Lead Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Cold Lead Email": {
+      "main": [
+        [
+          {
+            "node": "Update Cold Lead Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Lead Status": {
+      "main": [
+        [
+          {
+            "node": "Generate Cold Lead Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Follow-up Eligibility",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Follow-up Eligibility": {
+      "main": [
+        [
+          {
+            "node": "Fetch Gmail Conversation Thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Customer Reply": {
+      "main": [
+        [
+          {
+            "node": "Route by Reply Status & Nudge Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Reply Status & Nudge Limit": {
+      "main": [
+        [
+          {
+            "node": "Update Engaged Lead Status in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Warm Lead Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Lead as Non_Responsive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Engaged Lead Status in Supabase": {
+      "main": [
+        [
+          {
+            "node": "Notify Sales Manager in Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Kolkata",
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": 600
+    
+  },
+  "versionId": "471a1c18-827d-4f4f-8342-e1ffdc4e696a",
+  "meta": {
+    "templateCredsSetupCompleted": true
+    
+  },
+  "id": "UqD5puiCqSgt7Tp4",
+  "tags": []
+}

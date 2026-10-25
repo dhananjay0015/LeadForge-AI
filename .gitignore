@@ -1,0 +1,106 @@
+# ==========================================
+# LeadForge AI
+# ==========================================
+
+# ---- Secrets & Environment Variables ----
+.env
+.env.*
+!.env.example
+!.env.template
+*.secret
+secrets/
+private/
+credentials.json
+credentials.local.json
+secrets.json
+secrets.local.json
+config.local.json
+
+# ---- Private Keys & Certificates ----
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+
+# ---- Tokens, Auth & Local Credentials ----
+.token
+.token.*
+*.token
+auth.json
+auth.local.json
+service-account*.json
+*-service-account*.json
+
+# ---- Local n8n Data ----
+.n8n/
+n8n-data/
+database.sqlite
+database.sqlite-*
+*.sqlite
+*.sqlite3
+*.db
+
+# ---- Logs & Debug Output ----
+*.log
+logs/
+log/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+debug.log
+
+# ---- Temporary & Backup Files ----
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Node.js ----
+node_modules/
+npm-debug.log*
+.npm/
+.npx/
+coverage/
+
+# ---- Python (if used later) ----
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+ENV/
+
+# ---- IDE & Editor Settings ----
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+
+# ---- OS & Build Artifacts ----
+.DS_Store
+.AppleDouble
+.LSOverride
+ehthumbs.db
+Desktop.ini
+dist/
+build/
+out/
+
+# ---- Local Test Data & Exports ----
+test-data/private/
+exports/private/
+*.private.json
+*.local.json
+

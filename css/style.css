@@ -1,0 +1,11 @@
+body { 
+  font-family: 'Inter', sans-serif; 
+}
+
+/* Premium Input Hover Effect */
+input:focus, select:focus, textarea:focus {
+  background: white !important;
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+  box-shadow: 0 10px 15px -3px rgba(250, 204, 21, 0.3);
+}
