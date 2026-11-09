@@ -256,7 +256,7 @@ This ensures automation failures remain visible without overwhelming operators w
 
 ## 🔄 End-to-End Architecture
 
-
+```text
                     ┌────────────────────────────────┐
                     │   Error Monitoring Workflow    │
                     │                                │
@@ -273,7 +273,6 @@ This ensures automation failures remain visible without overwhelming operators w
                                     ▼
                          n8n Workflow Executions
 
-
 Visitor
    │
    ▼
@@ -284,6 +283,7 @@ LeadForge Web Application
 n8n Webhook
    │
    ▼
+
 ────────────────────────────────────────
        INBOUND PROCESSING WORKFLOW
 ────────────────────────────────────────
@@ -432,6 +432,8 @@ Sales Action     Log to CRM            │
    Gmail         → Emails • Conversation Threads
    Slack         → Sales Alerts • Error Notifications
    Google Sheets → Operational Tracking / Records
+
+   ---
 
 **🏛 Architectural Principles**
 
@@ -755,6 +757,7 @@ LeadForge AI uses potential customer engagement as a signal for determining the 
 
 For Warm Leads, the Inbound Processing Workflow retrieves the associated Gmail thread and evaluates the configured condition to determine the next action.
 
+```text
 Warm Lead
     │
     ▼
@@ -840,7 +843,7 @@ The result is a sales automation model that combines AI-assisted qualification, 
 
 The LeadForge AI repository is organized by responsibility, keeping the frontend, automation workflows, documentation, and visual assets clearly separated.
 
-
+```text
 LeadForge-AI/
 │
 ├── index.html
@@ -875,22 +878,23 @@ LeadForge-AI/
     ├── inbound-processing.json
     ├── automated-followups.json
     └── error-handler.json
-
-    
+   
 ---
-# 📂 Directory Responsibilities
-Path	Responsibility
-index.html	Main entry point for the LeadForge AI web interface
-css/	Contains custom CSS used by the frontend
-js/	Contains frontend JavaScript, form handling, and webhook communication
-assets/images/	Reserved for project images
-assets/icons/	Reserved for project icons
-assets/screenshots/	Contains application, workflow, CRM, and integration screenshots
-docs/	Contains system architecture and workflow documentation
-n8n/	Contains exported n8n workflows and workflow-specific documentation
-README.md	Main project documentation, architecture, workflows, business logic, setup instructions, and usage information
-.gitignore	Defines files and directories that should not be committed to the repository
 
+## 📁 Directory Responsibilities
+
+| Path | Responsibility |
+|---|---|
+| `index.html` | Main entry point for the LeadForge AI web interface. |
+| `css/` | Contains custom CSS used by the frontend. |
+| `js/` | Contains frontend JavaScript, form handling, and webhook communication. |
+| `assets/screenshots/` | Contains application, workflow, CRM, and integration screenshots. |
+| `docs/` | Contains system architecture and workflow documentation. |
+| `n8n/` | Contains exported n8n workflows and workflow-specific documentation. |
+| `README.md` | Main project documentation, architecture, workflows, business logic, setup instructions, and usage information. |
+| `.gitignore` | Defines files and directories that should not be committed to the repository. |
+
+---
 
 # 🛠 Tech Stack
 
@@ -911,8 +915,11 @@ LeadForge AI uses a lightweight web frontend, workflow automation, AI services, 
 | **Operational Tracking** | Google Sheets | Supports operational tracking, reporting, and nurture campaign records |
 | **Containerization** | Docker | Provides a containerized environment for running n8n locally |
 | **Email Validation** | ZeroBounce | Validates business email addresses before downstream lead processing |
-🔧 Technology Responsibilities
-🌐 Frontend
+
+
+---
+##🔧 Technology Responsibilities
+###🌐 Frontend
 
 **HTML5 + Tailwind CSS + JavaScript**
 
