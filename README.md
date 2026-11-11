@@ -254,186 +254,267 @@ This layer:
 This ensures automation failures remain visible without overwhelming operators with repeated notifications.
 
 
-## 🔄 End-to-End Architecture
+## 🔄 End-to-End System Architecture
 
-```text
-                    ┌────────────────────────────────┐
-                    │   Error Monitoring Workflow    │
-                    │                                │
-                    │ • Failure Detection            │
-                    │ • Context Retrieval             │
-                    │ • Severity Classification      │
-                    │ • Rate-Limited Alerts          │
-                    │ • Audit Information            │
-                    │ • Slack Notifications          │
-                    └───────────────┬────────────────┘
-                                    ┊
-                                    ┊ Monitors workflow
-                                    ┊ execution failures
-                                    ▼
-                         n8n Workflow Executions
+```mermaid
+flowchart TD
 
-Visitor
-   │
-   ▼
-LeadForge Web Application
-(HTML • Tailwind CSS • JavaScript)
-   │
-   ▼
-n8n Webhook
-   │
-   ▼
+    %% ==========================================
+    %% APPLICATION ENTRY
+    %% ==========================================
 
-────────────────────────────────────────
-       INBOUND PROCESSING WORKFLOW
-────────────────────────────────────────
-   │
-   ▼
-Normalize Inquiry Data
-   │
-   ▼
-Email Validation (ZeroBounce)
-   │
-   ▼
-HubSpot Contact Check / Create / Update
-   │
-   ▼
-AI Research (Groq)
-   │
-   ▼
-Lead Scoring & AI Qualification
-(BANT • Lead Score)
-   │
-   ▼
-Lead Classification
-   │
-   ├────────────────┬──────────────────┐
-   │                │                  │
-   ▼                ▼                  ▼
-  HOT              WARM               COLD
-   │                │                  │
-   ▼                ▼                  ▼
-Human Approval   Generate Intro     Archive Cold Lead
-   │             Email (AI)         for Future
-   │                │               Opportunities
-   ▼                ▼                  │
-Approval /       Send Nurture Email    │
-Rejection Path   (Gmail)               │
-   │                │                  │
-   ▼                ▼                  │
-Sales Action     Log to CRM            │
-/ Deal Update       │                  │
-/ Notification      ▼                  │
-   │             Wait 2 Days           │
-   │                │                  │
-   │                ▼                  │
-   │          Get Gmail Thread         │
-   │                │                  │
-   │                ▼                  │
-   │          Clicked/Replied?         │   │
-   │                │                  │
-   │         ┌──────┴──────┐           │
-   │         │             │           │
-   │         ▼             ▼           │
-   │        TRUE          FALSE        │
-   │         │             │           │
-   │         ▼             ▼           │
-   │     Slack Alert   Send Case Study │
-   │     Engagement    (Gmail)         │
-   │     Notification      │           │
-   │         │             │           │
-   └─────────┴─────────────┴───────────┘
-                    │
-                    ▼
-────────────────────────────────────────
-       SUPABASE LEAD DATA STORAGE
-────────────────────────────────────────
-                    │
-                    ▼
-          Check Existing Lead Record
-                    │
-                    ▼
-             Lead Record Exists?
-                    │
-              ┌─────┴─────┐
-              │           │
-              ▼           ▼
-             YES          NO
-              │           │
-              ▼           ▼
-        Update Existing  Create New
-        Supabase Row     Supabase Row
-              │           │
-              └─────┬─────┘
-                    │
-                    ▼
-       HOT • WARM • COLD Lead Data
-          Stored / Updated in Supabase
+    VISITOR["Visitor"]
+    APP["LeadForge Web Application<br/>HTML • Tailwind CSS • JavaScript"]
+    WEBHOOK["n8n Webhook"]
 
+    VISITOR --> APP --> WEBHOOK
 
-────────────────────────────────────────
-        AUTOMATED FOLLOW-UP WORKFLOW
-────────────────────────────────────────
-                    │
-                    ▼
-            Schedule Trigger
-               (10:00 AM)
-                    │
-                    ▼
-          Fetch Lead Records
-             from Supabase
-                    │
-                    ▼
-             Route by Lead Type
-                    │
-             ┌──────┴───────────┐
-             │                  │
-             ▼                  ▼
-           COLD             NURTURING
-             │                  │
-             ▼                  ▼
-      AI Follow-up Email   Check 3-Day
-             │             Eligibility
-             ▼                  │
-        Gmail Send              ▼
-             │            Get Gmail Thread
-             ▼                  │
-      Update Supabase           ▼
-                         Check Potential Reply
-                         & Nudge Count
-                                │
-                    ┌───────────┼────────────┐
-                    │           │            │
-                    ▼           ▼            ▼
-              Potential      No Reply     Max Nudges
-                Reply        (Count < 3)   Reached
-                    │           │            │
-                    ▼           ▼            ▼
-             Update Status   Generate      Update Status
-             Warm_Engaged    Follow-up     Non_Responsive
-                    │           │            │
-                    ▼           ▼            ▼
-               Slack Alert  Gmail Send    Stop Further
-               to Manager       │         Follow-ups
-                               ▼
-                        Update Supabase
-                        • updated_at
-                        • thread_id
-                        • nudge_count
+    %% ==========================================
+    %% INBOUND PROCESSING WORKFLOW
+    %% ==========================================
 
+    subgraph INBOUND["INBOUND PROCESSING WORKFLOW"]
+        direction TB
 
-────────────────────────────────────────
-             BUSINESS SYSTEMS
-────────────────────────────────────────
+        NORMALIZE["Normalize Inquiry Data"]
+        VALIDATE["Email Validation<br/>ZeroBounce"]
+        HUBSPOT_CHECK["HubSpot Contact<br/>Check / Create / Update"]
+        AI_RESEARCH["AI Research<br/>Groq"]
+        QUALIFICATION["Lead Scoring & AI Qualification<br/>BANT • Lead Score"]
+        CLASSIFICATION{"Lead Classification"}
 
-   HubSpot       → Contacts • Deals • CRM
-   Supabase      → Hot / Warm / Cold Lead Data
-                   Lead Records • Status • Tracking
-   Gmail         → Emails • Conversation Threads
-   Slack         → Sales Alerts • Error Notifications
-   Google Sheets → Operational Tracking / Records
+        HOT["HOT"]
+        WARM["WARM"]
+        COLD["COLD"]
 
-   ---
+        HUMAN_APPROVAL["Human Approval"]
+        APPROVAL_REJECTION["Approval / Rejection Path"]
+        SALES_ACTION["Sales Action<br/>Deal Update / Notification"]
+
+        INTRO_EMAIL["Generate Intro Email<br/>AI"]
+        NURTURE_EMAIL["Send Nurture Email<br/>Gmail"]
+        WAIT_2_DAYS["Wait 2 Days"]
+        GET_GMAIL_THREAD["Get Gmail Thread"]
+        ENGAGEMENT_CHECK{"Clicked / Replied?"}
+
+        ENGAGED["TRUE"]
+        NOT_ENGAGED["FALSE"]
+
+        SLACK_ENGAGEMENT["Slack Alert<br/>Engagement Notification"]
+        CASE_STUDY["Send Case-Study Email<br/>Gmail"]
+
+        ARCHIVE_COLD["Archive Cold Lead<br/>for Future Opportunities"]
+
+        NORMALIZE --> VALIDATE
+        VALIDATE --> HUBSPOT_CHECK
+        HUBSPOT_CHECK --> AI_RESEARCH
+        AI_RESEARCH --> QUALIFICATION
+        QUALIFICATION --> CLASSIFICATION
+
+        CLASSIFICATION --> HOT
+        CLASSIFICATION --> WARM
+        CLASSIFICATION --> COLD
+
+        HOT --> HUMAN_APPROVAL
+        HUMAN_APPROVAL --> APPROVAL_REJECTION
+        APPROVAL_REJECTION --> SALES_ACTION
+
+        WARM --> INTRO_EMAIL
+        INTRO_EMAIL --> NURTURE_EMAIL
+        NURTURE_EMAIL --> WAIT_2_DAYS
+        WAIT_2_DAYS --> GET_GMAIL_THREAD
+        GET_GMAIL_THREAD --> ENGAGEMENT_CHECK
+
+        ENGAGEMENT_CHECK --> ENGAGED
+        ENGAGEMENT_CHECK --> NOT_ENGAGED
+
+        ENGAGED --> SLACK_ENGAGEMENT
+        NOT_ENGAGED --> CASE_STUDY
+
+        COLD --> ARCHIVE_COLD
+    end
+
+    WEBHOOK --> NORMALIZE
+
+    %% ==========================================
+    %% SUPABASE LEAD DATA STORAGE
+    %% ==========================================
+
+    subgraph STORAGE["SUPABASE LEAD DATA STORAGE"]
+        direction TB
+
+        EXISTING_CHECK["Check Existing Lead Record"]
+        RECORD_EXISTS{"Lead Record Exists?"}
+
+        UPDATE_EXISTING["Update Existing Supabase Row"]
+        CREATE_NEW["Create New Supabase Row"]
+
+        LEAD_DATA["HOT • WARM • COLD Lead Data<br/>Stored / Updated in Supabase"]
+
+        EXISTING_CHECK --> RECORD_EXISTS
+
+        RECORD_EXISTS -->|YES| UPDATE_EXISTING
+        RECORD_EXISTS -->|NO| CREATE_NEW
+
+        UPDATE_EXISTING --> LEAD_DATA
+        CREATE_NEW --> LEAD_DATA
+    end
+
+    HUBSPOT_CHECK -.-> EXISTING_CHECK
+    QUALIFICATION -.-> EXISTING_CHECK
+    SALES_ACTION -.-> EXISTING_CHECK
+    SLACK_ENGAGEMENT -.-> EXISTING_CHECK
+    CASE_STUDY -.-> EXISTING_CHECK
+    ARCHIVE_COLD -.-> EXISTING_CHECK
+
+    %% ==========================================
+    %% AUTOMATED FOLLOW-UP WORKFLOW
+    %% ==========================================
+
+    subgraph FOLLOWUP["AUTOMATED FOLLOW-UP WORKFLOW"]
+        direction TB
+
+        SCHEDULE["Schedule Trigger<br/>10:00 AM"]
+        FETCH_LEADS["Fetch Lead Records<br/>from Supabase"]
+        LEAD_ROUTING{"Route by Lead Type"}
+
+        COLD_BRANCH["COLD"]
+        NURTURING_BRANCH["NURTURING"]
+
+        COLD_AI_EMAIL["AI Follow-up Email"]
+        COLD_GMAIL["Gmail Send"]
+        COLD_DB_UPDATE["Update Supabase"]
+
+        ELIGIBILITY["Check 3-Day Eligibility"]
+        NURTURE_THREAD["Get Gmail Thread"]
+        REPLY_NUDGE_CHECK["Check Potential Reply<br/>& Nudge Count"]
+
+        POTENTIAL_REPLY["Potential Reply"]
+        NO_REPLY["No Reply<br/>Count < 3"]
+        MAX_NUDGES["Max Nudges Reached"]
+
+        WARM_ENGAGED["Update Status<br/>Warm_Engaged"]
+        MANAGER_SLACK["Slack Alert to Manager"]
+
+        GENERATE_FOLLOWUP["Generate Follow-up"]
+        NURTURE_GMAIL["Gmail Send"]
+
+        NON_RESPONSIVE["Update Status<br/>Non_Responsive"]
+        STOP_FOLLOWUPS["Stop Further Follow-ups"]
+
+        UPDATE_SUPABASE["Update Supabase<br/>updated_at<br/>thread_id<br/>nudge_count"]
+
+        SCHEDULE --> FETCH_LEADS
+        FETCH_LEADS --> LEAD_ROUTING
+
+        LEAD_ROUTING -->|COLD| COLD_BRANCH
+        COLD_BRANCH --> COLD_AI_EMAIL
+        COLD_AI_EMAIL --> COLD_GMAIL
+        COLD_GMAIL --> COLD_DB_UPDATE
+
+        LEAD_ROUTING -->|NURTURING| NURTURING_BRANCH
+        NURTURING_BRANCH --> ELIGIBILITY
+        ELIGIBILITY --> NURTURE_THREAD
+        NURTURE_THREAD --> REPLY_NUDGE_CHECK
+
+        REPLY_NUDGE_CHECK --> POTENTIAL_REPLY
+        POTENTIAL_REPLY --> WARM_ENGAGED
+        WARM_ENGAGED --> MANAGER_SLACK
+        MANAGER_SLACK --> UPDATE_SUPABASE
+
+        REPLY_NUDGE_CHECK --> NO_REPLY
+        NO_REPLY --> GENERATE_FOLLOWUP
+        GENERATE_FOLLOWUP --> NURTURE_GMAIL
+        NURTURE_GMAIL --> UPDATE_SUPABASE
+
+        REPLY_NUDGE_CHECK --> MAX_NUDGES
+        MAX_NUDGES --> NON_RESPONSIVE
+        NON_RESPONSIVE --> STOP_FOLLOWUPS
+        STOP_FOLLOWUPS --> UPDATE_SUPABASE
+
+        COLD_DB_UPDATE --> UPDATE_SUPABASE
+    end
+
+    LEAD_DATA --> FETCH_LEADS
+
+    %% ==========================================
+    %% ERROR MONITORING WORKFLOW
+    %% ==========================================
+
+    subgraph ERROR_MONITORING["ERROR MONITORING WORKFLOW"]
+        direction TB
+
+        FAILURE["Failure Detection"]
+        CONTEXT["Context Retrieval"]
+        SEVERITY["Severity Classification"]
+        RATE_LIMIT["Rate-Limited Alerts"]
+        AUDIT["Audit Information"]
+        ERROR_SLACK["Slack Notifications"]
+
+        FAILURE --> CONTEXT
+        CONTEXT --> SEVERITY
+        SEVERITY --> RATE_LIMIT
+        RATE_LIMIT --> AUDIT
+        AUDIT --> ERROR_SLACK
+    end
+
+    WEBHOOK -.-> FAILURE
+    INBOUND -.-> FAILURE
+    FOLLOWUP -.-> FAILURE
+
+    EXECUTIONS["n8n Workflow Executions"]
+    EXECUTIONS -.-> FAILURE
+
+    %% ==========================================
+    %% BUSINESS SYSTEMS
+    %% ==========================================
+
+    subgraph BUSINESS_SYSTEMS["BUSINESS SYSTEMS"]
+        direction TB
+
+        HUBSPOT_SYS["HubSpot<br/>Contacts • Deals • CRM"]
+
+        SUPABASE_SYS["Supabase<br/>Hot / Warm / Cold Lead Data<br/>Lead Records • Status • Tracking"]
+
+        GMAIL_SYS["Gmail<br/>Emails • Conversation Threads"]
+
+        SLACK_SYS["Slack<br/>Sales Alerts • Error Notifications"]
+
+        SHEETS_SYS["Google Sheets<br/>Operational Tracking / Records"]
+    end
+
+    HUBSPOT_CHECK -.-> HUBSPOT_SYS
+
+    LEAD_DATA -.-> SUPABASE_SYS
+
+    NURTURE_EMAIL -.-> GMAIL_SYS
+    CASE_STUDY -.-> GMAIL_SYS
+    COLD_GMAIL -.-> GMAIL_SYS
+    NURTURE_GMAIL -.-> GMAIL_SYS
+
+    SLACK_ENGAGEMENT -.-> SLACK_SYS
+    MANAGER_SLACK -.-> SLACK_SYS
+    ERROR_SLACK -.-> SLACK_SYS
+
+    AUDIT -.-> SHEETS_SYS
+
+    %% ==========================================
+    %% VISUAL STYLING
+    %% ==========================================
+
+    classDef app fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef ai fill:#f3e8ff,stroke:#9333ea,color:#581c87
+    classDef database fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef decision fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef notification fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+
+    class VISITOR,APP,WEBHOOK app
+    class AI_RESEARCH,QUALIFICATION,INTRO_EMAIL,COLD_AI_EMAIL,GENERATE_FOLLOWUP ai
+    class EXISTING_CHECK,UPDATE_EXISTING,CREATE_NEW,LEAD_DATA,UPDATE_SUPABASE database
+    class CLASSIFICATION,RECORD_EXISTS,ENGAGEMENT_CHECK,LEAD_ROUTING,REPLY_NUDGE_CHECK decision
+    class SLACK_ENGAGEMENT,MANAGER_SLACK,ERROR_SLACK notification
+```
+
 
 **🏛 Architectural Principles**
 
@@ -448,7 +529,6 @@ LeadForge AI follows a modular architecture based on the following principles:
 - Operational monitoring and audit logging
 - Modular workflows designed for future scalability
 
----
 
 
 # 🔄 Workflow Modules
@@ -637,17 +717,25 @@ The qualification model considers:
 
 These signals contribute to the overall lead-quality evaluation and help determine the appropriate business path:
 
-Inbound Inquiry
-      │
-      ▼
-AI Analysis + BANT Evaluation
-      │
-      ▼
-Lead Score & Intent Evaluation
-      │
- ┌────┼────┐
- ▼    ▼    ▼
-HOT  WARM  COLD
+
+```mermaid
+flowchart TD
+    A["Inbound Inquiry"] --> B["AI Analysis + BANT Evaluation"]
+    B --> C["Lead Score & Intent Evaluation"]
+
+    C --> D["HOT"]
+    C --> E["WARM"]
+    C --> F["COLD"]
+
+    style A fill:#E3F2FD,stroke:#1565C0,color:#000
+    style B fill:#E8EAF6,stroke:#3949AB,color:#000
+    style C fill:#FFF3E0,stroke:#EF6C00,color:#000
+
+    style D fill:#FFCDD2,stroke:#C62828,color:#000
+    style E fill:#FFF9C4,stroke:#F9A825,color:#000
+    style F fill:#C8E6C9,stroke:#2E7D32,color:#000
+```
+
 
 The classification is used by the automation layer to determine how the opportunity should be handled.
 ---
@@ -757,30 +845,26 @@ LeadForge AI uses potential customer engagement as a signal for determining the 
 
 For Warm Leads, the Inbound Processing Workflow retrieves the associated Gmail thread and evaluates the configured condition to determine the next action.
 
-```text
-Warm Lead
-    │
-    ▼
-Personalized Introductory Email
-    │
-    ▼
-Wait 2 Days
-    │
-    ▼
-Retrieve Gmail Thread
-    │
-    ▼
-Engagement Condition Check
-    │
-    ├── Condition Met
-    │       │
-    │       ▼
-    │   Slack Notification
-    │
-    └── Condition Not Met
-            │
-            ▼
-        Case-Study Email
+
+```mermaid
+flowchart TD
+    A["Warm Lead"] --> B["Personalized Introductory Email"]
+    B --> C["Wait 2 Days"]
+    C --> D["Retrieve Gmail Thread"]
+    D --> E{"Engagement Condition Check"}
+
+    E -->|Condition Met| F["Slack Notification"]
+    E -->|Condition Not Met| G["Case-Study Email"]
+
+    style A fill:#FFF9C4,stroke:#F9A825,color:#000
+    style B fill:#E3F2FD,stroke:#1565C0,color:#000
+    style C fill:#E8EAF6,stroke:#3949AB,color:#000
+    style D fill:#E3F2FD,stroke:#1565C0,color:#000
+    style E fill:#FFF3E0,stroke:#EF6C00,color:#000
+    style F fill:#C8E6C9,stroke:#2E7D32,color:#000
+    style G fill:#D1C4E9,stroke:#6A1B9A,color:#000
+```
+
 
 ---
 
@@ -843,7 +927,7 @@ The result is a sales automation model that combines AI-assisted qualification, 
 
 The LeadForge AI repository is organized by responsibility, keeping the frontend, automation workflows, documentation, and visual assets clearly separated.
 
-```text
+
 LeadForge-AI/
 │
 ├── index.html
@@ -918,8 +1002,8 @@ LeadForge AI uses a lightweight web frontend, workflow automation, AI services, 
 
 
 ---
-##🔧 Technology Responsibilities
-###🌐 Frontend
+## 🔧 Technology Responsibilities
+### 🌐 Frontend
 
 **HTML5 + Tailwind CSS + JavaScript**
 
