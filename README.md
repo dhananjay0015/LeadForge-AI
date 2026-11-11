@@ -781,16 +781,24 @@ The system continues nurturing while the prospect remains unresponsive and the c
 
 The next action depends on the configured engagement condition:
 
-Warm Lead  
-↓  
-Automated Nurturing  
-↓  
-Gmail Thread Retrieval  
-↓  
-Engagement Condition Check  
-↓  
-**Condition Met:** Slack Notification  
-**Condition Not Met:** Personalized Case-Study Email
+
+```mermaid id="w8k2fz"
+flowchart TD
+    A["Warm Lead"] --> B["Automated Nurturing"]
+    B --> C["Gmail Thread Retrieval"]
+    C --> D{"Engagement Condition Check"}
+
+    D -->|Condition Met| E["Slack Notification"]
+    D -->|Condition Not Met| F["Personalized Case-Study Email"]
+
+    style A fill:#FFF9C4,stroke:#F9A825,color:#000
+    style B fill:#E3F2FD,stroke:#1565C0,color:#000
+    style C fill:#E8EAF6,stroke:#3949AB,color:#000
+    style D fill:#FFF3E0,stroke:#EF6C00,color:#000
+    style E fill:#C8E6C9,stroke:#2E7D32,color:#000
+    style F fill:#D1C4E9,stroke:#6A1B9A,color:#000
+```
+
 
 **Business Principle**
 
@@ -908,17 +916,22 @@ Lead State	Business Treatment	Primary Objective
 
 The LeadForge AI decision model can be summarized as:
 
-AI analyzes the opportunity
-          ↓
-Lead quality is evaluated
-          ↓
-Business path is determined
-          ↓
-Automation executes the appropriate process
-          ↓
-Human intervention occurs where required
-          ↓
-Business systems retain the operational state
+
+```mermaid
+flowchart TD
+    A["AI analyzes the opportunity"] --> B["Lead quality is evaluated"]
+    B --> C["Business path is determined"]
+    C --> D["Automation executes the appropriate process"]
+    D --> E["Human intervention occurs where required"]
+    E --> F["Business systems retain operational state"]
+
+    style A fill:#E3F2FD,stroke:#1565C0,color:#000
+    style B fill:#E8EAF6,stroke:#3949AB,color:#000
+    style C fill:#FFF3E0,stroke:#EF6C00,color:#000
+    style D fill:#E0F2F1,stroke:#00897B,color:#000
+    style E fill:#FFF9C4,stroke:#F9A825,color:#000
+    style F fill:#C8E6C9,stroke:#2E7D32,color:#000
+```
 
 The result is a sales automation model that combines AI-assisted qualification, deterministic workflow control, engagement-driven automation, CRM synchronization, and human decision-making without treating every lead as the same type of opportunity.
 
@@ -928,41 +941,57 @@ The result is a sales automation model that combines AI-assisted qualification, 
 The LeadForge AI repository is organized by responsibility, keeping the frontend, automation workflows, documentation, and visual assets clearly separated.
 
 
-LeadForge-AI/
-│
-├── index.html
-├── README.md
-├── .gitignore
-│
-├── css/
-│   └── style.css
-│
-├── js/
-│   └── script.js
-│
-├── assets/
-│   └── screenshots/
-│       ├── landing-page.png
-│       ├── inquiry-form.png
-│       ├── acknowledgment-screen.png
-│       ├── inbound-processing.png
-│       ├── automated-followups.png
-│       ├── hot-lead-approval.png
-│       ├── hot-lead-approval-request.png
-│       ├── warm-to-hot-lead-handover.png
-│       ├── error-handler.png
-│       ├── hubspot-sync.png
-│       ├── supabase-database.png
-│       └── slack-notification.png
-│
-├── docs/
-│   └── system-architecture.png
-│
-└── n8n/
-    ├── inbound-processing.json
-    ├── automated-followups.json
-    └── error-handler.json
-   
+
+```mermaid id="k9v3mz"
+flowchart TD
+    ROOT["LeadForge-AI/"]
+
+    ROOT --> INDEX["index.html"]
+    ROOT --> README["README.md"]
+    ROOT --> GITIGNORE[".gitignore"]
+    ROOT --> CSS["css/"]
+    ROOT --> JS["js/"]
+    ROOT --> ASSETS["assets/"]
+    ROOT --> DOCS["docs/"]
+    ROOT --> N8N["n8n/"]
+
+    CSS --> STYLE["style.css"]
+    JS --> SCRIPT["script.js"]
+
+    ASSETS --> SCREENSHOTS["screenshots/"]
+
+    SCREENSHOTS --> S1["landing-page.png"]
+    SCREENSHOTS --> S2["inquiry-form.png"]
+    SCREENSHOTS --> S3["acknowledgment-screen.png"]
+    SCREENSHOTS --> S4["inbound-processing.png"]
+    SCREENSHOTS --> S5["automated-followups.png"]
+    SCREENSHOTS --> S6["hot-lead-approval.png"]
+    SCREENSHOTS --> S7["hot-lead-approval-request.png"]
+    SCREENSHOTS --> S8["warm-to-hot-lead-handover.png"]
+    SCREENSHOTS --> S9["error-handler.png"]
+    SCREENSHOTS --> S10["hubspot-sync.png"]
+    SCREENSHOTS --> S11["supabase-database.png"]
+    SCREENSHOTS --> S12["slack-notification.png"]
+
+    DOCS --> ARCH["system-architecture.png"]
+
+    N8N --> WF1["inbound-processing.json"]
+    N8N --> WF2["automated-followups.json"]
+    N8N --> WF3["error-handler.json"]
+
+    classDef root fill:#1565C0,color:#fff,stroke:#0D47A1,stroke-width:2px
+    classDef folder fill:#E3F2FD,color:#000,stroke:#1565C0
+    classDef file fill:#F5F5F5,color:#000,stroke:#616161
+    classDef workflow fill:#E8F5E9,color:#000,stroke:#2E7D32
+    classDef image fill:#FFF3E0,color:#000,stroke:#EF6C00
+
+    class ROOT root
+    class CSS,JS,ASSETS,DOCS,N8N,SCREENSHOTS folder
+    class INDEX,README,GITIGNORE,STYLE,SCRIPT file
+    class WF1,WF2,WF3 workflow
+    class S1,S2,S3,S4,S5,S6,S7,S8,S9,S10,S11,S12,ARCH image
+```
+
 ---
 
 ## 📁 Directory Responsibilities
